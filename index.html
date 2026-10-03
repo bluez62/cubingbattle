@@ -40,6 +40,7 @@
         @keyframes pulse-slow {
             0%, 100% { opacity: 1; transform: scale(1); }
             50% { opacity: 0.85; transform: scale(1.02); }
+        }
         .spotlight {
             background: radial-gradient(circle at 50% -20%, rgba(59, 130, 246, 0.15), transparent 70%);
         }
@@ -469,6 +470,7 @@
 
         // Inspection Phase
         function startInspectionPhase() {
+            if (inspectionInterval) clearInterval(inspectionInterval);
             timerState = 'INSPECTION';
             inspectionStartTime = performance.now();
             
@@ -496,7 +498,7 @@
                     playBeep('inspect_danger');
                 } else if (remaining <= 0) {
                     display.innerText = "DNF";
-                    clearInterval(inspectionInterval);
+                    if (inspectionInterval) clearInterval(inspectionInterval);
                 }
             }, 200);
         }
@@ -509,7 +511,15 @@
 
         // Solve Phase
         function startSolvePhase() {
-            if (inspectionInterval) clearInterval(inspectionInterval);
+            if (inspectionInterval) {
+                clearInterval(inspectionInterval);
+                inspectionInterval = null;
+            }
+            if (solveInterval) {
+                clearInterval(solveInterval);
+                solveInterval = null;
+            }
+
             timerState = 'SOLVING';
             solveStartTime = performance.now();
 
@@ -530,7 +540,10 @@
 
         function stopSolvePhase() {
             if (timerState !== 'SOLVING') return;
-            clearInterval(solveInterval);
+            if (solveInterval) {
+                clearInterval(solveInterval);
+                solveInterval = null;
+            }
             timerState = 'ROUND_OVER';
 
             let playerTime = (performance.now() - solveStartTime) / 1000;
@@ -711,12 +724,38 @@
                 }
             } else {
                 matchState.currentRound++;
-                requestNewScramble();
-                document.getElementById('timerDisplay').innerText = "0.00";
-                document.getElementById('phaseDot').className = "w-2.5 h-2.5 rounded-full bg-slate-500";
-                document.getElementById('phaseText').innerText = "READY FOR INSPECTION";
-                document.getElementById('botStatusSub').innerText = "Waiting for inspection...";
+                prepareNextRoundState();
             }
+        }
+
+        function prepareNextRoundState() {
+            // Clean up any lingering intervals or timeout flags
+            if (inspectionInterval) {
+                clearInterval(inspectionInterval);
+                inspectionInterval = null;
+            }
+            if (solveInterval) {
+                clearInterval(solveInterval);
+                solveInterval = null;
+            }
+            if (spaceHeldTimeout) {
+                clearTimeout(spaceHeldTimeout);
+                spaceHeldTimeout = null;
+            }
+
+            timerState = 'IDLE';
+            isSpaceDown = false;
+
+            requestNewScramble();
+            document.getElementById('timerDisplay').innerText = "0.00";
+            document.getElementById('timerDisplay').className = "mono-font text-6xl md:text-8xl font-black tracking-wider text-slate-100 select-none drop-shadow-lg";
+            document.getElementById('phaseDot').className = "w-2.5 h-2.5 rounded-full bg-slate-500";
+            document.getElementById('phaseText').innerText = "READY FOR INSPECTION";
+            document.getElementById('botStatusSub').innerText = "Waiting for inspection...";
+            document.getElementById('timerSubDisplay').innerHTML = 'Press & hold <kbd class="px-2 py-0.5 bg-slate-800 border border-slate-700 rounded text-slate-200">SPACEBAR</kbd> to inspect or solve.';
+            document.getElementById('actionBtn').innerHTML = '<i class="fa-solid fa-stopwatch"></i> Start Inspection / Solve';
+            document.getElementById('actionBtn').className = "flex-1 bg-blue-600 hover:bg-blue-500 text-white font-bold py-3.5 px-6 rounded-xl transition shadow-lg shadow-blue-600/30 text-sm flex items-center justify-center gap-2";
+            document.getElementById('skipInspectionBtn').classList.add('hidden');
         }
 
         function resetSetScoresOnly() {
@@ -724,12 +763,8 @@
             matchState.botPoints = 0;
             matchState.currentRound = 1;
             matchState.roundHistory = [];
-            requestNewScramble();
             updateAllUI();
-            document.getElementById('timerDisplay').innerText = "0.00";
-            document.getElementById('phaseDot').className = "w-2.5 h-2.5 rounded-full bg-slate-500";
-            document.getElementById('phaseText').innerText = "READY FOR INSPECTION";
-            document.getElementById('botStatusSub').innerText = "Waiting for inspection...";
+            prepareNextRoundState();
         }
 
         function resetEntireMatch() {
