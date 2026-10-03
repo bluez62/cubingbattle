@@ -1,0 +1,657 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Speedcubing Duel Arena</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        cubing: {
+                            bg: '#0f172a',
+                            card: '#1e293b',
+                            accent: '#3b82f6',
+                            accentHover: '#2563eb',
+                            success: '#22c55e',
+                            danger: '#ef4444',
+                            warning: '#f59e0b'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Google Fonts: Inter & JetBrains Mono for Timer -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+    <!-- Confetti Library -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <!-- FontAwesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .timer-font {
+            font-family: 'JetBrains Mono', monospace;
+        }
+    </style>
+</head>
+<body class="bg-cubing-bg text-slate-100 min-h-screen flex flex-col justify-between selection:bg-blue-500 selection:text-white">
+
+    <!-- Header -->
+    <header class="border-b border-slate-800 bg-slate-900/50 backdrop-blur sticky top-0 z-50">
+        <div class="max-w-6xl mx-auto px-4 py-4 flex flex-col sm:flex-row justify-between items-center gap-4">
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-500 flex items-center justify-center shadow-lg shadow-blue-500/30">
+                    <i class="fa-solid fa-cube text-xl text-white"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold tracking-tight bg-gradient-to-r from-white to-slate-400 bg-clip-text text-transparent">CubeDuel Arena</h1>
+                    <p class="text-xs text-slate-400">Speedcubing Match Practice</p>
+                </div>
+            </div>
+            
+            <div class="flex items-center gap-3">
+                <!-- Bot Difficulty Selector -->
+                <div class="flex items-center bg-slate-800 rounded-lg p-1 border border-slate-700">
+                    <span class="text-xs text-slate-400 px-2 font-medium hidden md:inline">Bot Level:</span>
+                    <select id="botDifficulty" class="bg-slate-900 text-xs font-semibold text-blue-400 rounded px-2 py-1.5 outline-none cursor-pointer">
+                        <option value="beginner">Beginner (~45.0s)</option>
+                        <option value="sub40">Sub-40 (~35.0s)</option>
+                        <option value="sub30">Sub-30 (~24.0s)</option>
+                        <option value="sub20" selected>Sub-20 (~16.5s)</option>
+                        <option value="sub15">Sub-15 (~12.5s)</option>
+                        <option value="sub10">Sub-10 (~9.0s)</option>
+                    </select>
+                </div>
+                <!-- Reset Match Button -->
+                <button onclick="resetMatchConfirm()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 px-3 py-1.5 rounded-lg text-xs font-medium transition border border-slate-700 flex items-center gap-1.5">
+                    <i class="fa-solid fa-rotate-right"></i> Reset Match
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="max-w-4xl w-full mx-auto px-4 py-6 flex-1 flex flex-col gap-6">
+
+        <!-- Match Scoreboard Box -->
+        <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-5 shadow-xl backdrop-blur">
+            <div class="grid grid-cols-3 gap-4 text-center items-center">
+                <!-- Player Score -->
+                <div class="bg-slate-800/60 rounded-xl p-4 border border-slate-700/50 relative overflow-hidden">
+                    <div class="absolute top-0 left-0 w-1.5 h-full bg-blue-500"></div>
+                    <span class="text-xs font-semibold uppercase tracking-wider text-slate-400 block mb-1">You</span>
+                    <div class="flex items-baseline justify-center gap-2">
+                        <span id="playerSets" class="text-3xl font-extrabold text-blue-400">0</span>
+                        <span class="text-xs text-slate-500 font-medium">Sets Won</span>
+                    </div>
+                    <div class="mt-2 text-xs bg-slate-800 py-1 rounded text-slate-300 font-medium border border-slate-700">
+                        Current Round: <span id="playerPoints" class="font-bold text-white">0</span>/3
+                    </div>
+                </div>
+
+                <!-- VS Badge / Match Status -->
+                <div class="flex flex-col items-center justify-center">
+                    <div class="w-12 h-12 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center shadow-md mb-2">
+                        <span class="text-xs font-black tracking-widest text-slate-300">VS</span>
+                    </div>
+                    <span id="matchStatusBadge" class="text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/20">
+                        First to 5 Sets
+                    </span>
+                </div>
+
+                <!-- Bot Score -->
+                <div class="bg-slate-800/60 rounded-xl p-4 border border-slate-700/50 relative overflow-hidden">
+                    <div class="absolute top-0 right-0 w-1.5 h-full bg-rose-500"></div>
+                    <span class="text-xs font-semibold uppercase tracking-wider text-slate-400 block mb-1">Bot (<span id="botLevelDisplay">Sub-20</span>)</span>
+                    <div class="flex items-baseline justify-center gap-2">
+                        <span id="botSets" class="text-3xl font-extrabold text-rose-400">0</span>
+                        <span class="text-xs text-slate-500 font-medium">Sets Won</span>
+                    </div>
+                    <div class="mt-2 text-xs bg-slate-800 py-1 rounded text-slate-300 font-medium border border-slate-700">
+                        Current Round: <span id="botPoints" class="font-bold text-white">0</span>/3
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Scramble Card -->
+        <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-5 shadow-xl">
+            <div class="flex justify-between items-center mb-2">
+                <span class="text-xs font-semibold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                    <i class="fa-solid fa-shuffle text-blue-400"></i> WCA 3x3 Scramble
+                </span>
+                <button onclick="generateNewScramble()" class="text-xs text-blue-400 hover:text-blue-300 transition flex items-center gap-1">
+                    <i class="fa-solid fa-arrow-rotate-right"></i> New Scramble
+                </button>
+            </div>
+            <div id="scrambleText" class="timer-font text-lg md:text-xl font-bold tracking-wide text-slate-200 bg-slate-950 p-4 rounded-xl border border-slate-800/80 text-center select-all">
+                Loading scramble...
+            </div>
+        </div>
+
+        <!-- Duel Solve Input Area -->
+        <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-6 shadow-xl flex flex-col items-center text-center">
+            
+            <!-- Mode Tabs (Timer vs Manual Input) -->
+            <div class="flex bg-slate-950 p-1 rounded-xl border border-slate-800 mb-6">
+                <button id="tabTimerBtn" onclick="switchMode('timer')" class="px-4 py-2 rounded-lg text-xs font-semibold transition bg-blue-600 text-white shadow">
+                    <i class="fa-solid fa-stopwatch mr-1"></i> Interactive Timer (Spacebar)
+                </button>
+                <button id="tabManualBtn" onclick="switchMode('manual')" class="px-4 py-2 rounded-lg text-xs font-semibold transition text-slate-400 hover:text-white">
+                    <i class="fa-solid fa-keyboard mr-1"></i> Manual Input
+                </button>
+            </div>
+
+            <!-- Timer Display View -->
+            <div id="timerModeContainer" class="w-full flex flex-col items-center">
+                <div id="timerDisplay" class="timer-font text-5xl md:text-7xl font-bold tracking-wider text-slate-100 my-4 select-none">
+                    0.00
+                </div>
+                <p id="timerInstruction" class="text-xs text-slate-400 mb-6">
+                    Press & hold <kbd class="px-2 py-1 bg-slate-800 border border-slate-700 rounded text-slate-200 font-sans">SPACE</kbd> to ready, release to start solve. Press SPACE again to stop.
+                </p>
+                <button id="mobileTimerBtn" class="w-full sm:w-64 bg-blue-600 hover:bg-blue-500 text-white font-bold py-3.5 rounded-xl transition shadow-lg shadow-blue-600/30 text-sm flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-play"></i> Tap to Start / Stop Timer
+                </button>
+            </div>
+
+            <!-- Manual Input View -->
+            <div id="manualModeContainer" class="w-full hidden flex flex-col items-center max-w-sm">
+                <label for="manualTimeInput" class="text-xs text-slate-400 mb-2 font-medium">Enter your solve time in seconds (e.g. 14.52 or 1:12.34):</label>
+                <div class="flex gap-2 w-full">
+                    <input type="text" id="manualTimeInput" placeholder="15.42" class="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-slate-100 text-lg timer-font focus:outline-none focus:border-blue-500 transition">
+                    <button onclick="submitManualTime()" class="bg-blue-600 hover:bg-blue-500 text-white px-6 rounded-xl font-semibold transition shadow-lg shadow-blue-600/30">
+                        Submit
+                    </button>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Solve History for Current Set -->
+        <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-5 shadow-xl">
+            <h3 class="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-3 flex items-center gap-1.5">
+                <i class="fa-solid fa-clock-rotate-left text-blue-400"></i> Current Set Round History
+            </h3>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-xs">
+                    <thead class="bg-slate-950 text-slate-400 uppercase font-semibold border-b border-slate-800">
+                        <tr>
+                            <th class="p-3 rounded-l-lg">Round</th>
+                            <th class="p-3">Your Time</th>
+                            <th class="p-3">Bot Time</th>
+                            <th class="p-3 rounded-r-lg text-right">Round Winner</th>
+                        </tr>
+                    </thead>
+                    <tbody id="historyTableBody" class="divide-y divide-slate-800/50 text-slate-300">
+                        <!-- Populated by JavaScript -->
+                        <tr id="emptyHistoryRow">
+                            <td colspan="4" class="p-4 text-center text-slate-500 italic">No solves recorded in this set yet. Complete a solve to begin!</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Result Notification / Modal overlay -->
+    <div id="modalOverlay" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 max-w-md w-full shadow-2xl text-center transform scale-95 transition-transform duration-300" id="modalCard">
+            <div id="modalIconContainer" class="w-16 h-16 rounded-full mx-auto flex items-center justify-center text-2xl mb-4 shadow-lg">
+                <i id="modalIcon" class="fa-solid fa-trophy"></i>
+            </div>
+            <h2 id="modalTitle" class="text-2xl font-bold text-white mb-2">Round Won!</h2>
+            <p id="modalMessage" class="text-slate-300 text-sm mb-6">You beat the bot with a faster solve time.</p>
+            
+            <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 mb-6 grid grid-cols-2 gap-4 text-center">
+                <div>
+                    <span class="text-[11px] text-slate-500 block uppercase">Your Time</span>
+                    <span id="modalPlayerTime" class="text-lg font-bold timer-font text-blue-400">14.23s</span>
+                </div>
+                <div>
+                    <span class="text-[11px] text-slate-500 block uppercase">Bot Time</span>
+                    <span id="modalBotTime" class="text-lg font-bold timer-font text-rose-400">16.89s</span>
+                </div>
+            </div>
+
+            <button onclick="closeModalAndNext()" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-semibold py-3 rounded-xl transition shadow-lg shadow-blue-600/30 text-sm">
+                Next Round <i class="fa-solid fa-arrow-right ml-1"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- Match/Set Win Celebration Modal -->
+    <div id="celebrationModal" class="fixed inset-0 bg-slate-950/90 backdrop-blur-md z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-8 max-w-md w-full shadow-2xl text-center">
+            <div class="w-20 h-20 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/30 flex items-center justify-center text-3xl mx-auto mb-4 shadow-xl shadow-amber-500/20 animate-bounce">
+                <i class="fa-solid fa-crown"></i>
+            </div>
+            <h2 id="celebrationTitle" class="text-3xl font-extrabold text-white mb-2">Set Won!</h2>
+            <p id="celebrationMessage" class="text-slate-300 text-sm mb-6">You secured 3 round points first!</p>
+            
+            <button onclick="dismissCelebration()" class="w-full bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-bold py-3.5 rounded-xl transition shadow-lg shadow-amber-500/30 text-sm">
+                Continue Match <i class="fa-solid fa-play ml-1"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="border-t border-slate-800 py-4 text-center text-xs text-slate-500">
+        CubeDuel Arena • WCA Scramble Generator & Practice Companion
+    </footer>
+
+    <!-- Application Logic Script -->
+    <script>
+        // Match State Variables
+        let gameState = {
+            botDifficulty: 'sub20',
+            playerSets: 0,
+            botSets: 0,
+            playerPoints: 0,
+            botPoints: 0,
+            currentRound: 1,
+            roundHistory: [],
+            scramble: ''
+        };
+
+        // Timer States
+        let timerMode = 'timer'; // 'timer' or 'manual'
+        let timerStatus = 'IDLE'; // 'IDLE', 'HOLDING', 'READY', 'RUNNING'
+        let timerStartTime = 0;
+        let timerInterval = null;
+        let holdTimeout = null;
+
+        // Bot Difficulty Profiles (Average time in seconds, standard deviation)
+        const botProfiles = {
+            beginner: { name: 'Beginner', mean: 45.0, stdDev: 6.0 },
+            sub40:    { name: 'Sub-40',   mean: 35.0, stdDev: 4.5 },
+            sub30:    { name: 'Sub-30',   mean: 24.0, stdDev: 3.2 },
+            sub20:    { name: 'Sub-20',   mean: 16.5, stdDev: 2.2 },
+            sub15:    { name: 'Sub-15',   mean: 12.5, stdDev: 1.5 },
+            sub10:    { name: 'Sub-10',   mean:  9.0, stdDev: 1.0 }
+        };
+
+        // Initialize App on Window Load
+        window.onload = function() {
+            initScramble();
+            setupEventListeners();
+            updateUI();
+        };
+
+        function setupEventListeners() {
+            // Difficulty selector change
+            document.getElementById('botDifficulty').addEventListener('change', (e) => {
+                gameState.botDifficulty = e.target.value;
+                document.getElementById('botLevelDisplay').innerText = botProfiles[gameState.botDifficulty].name;
+            });
+
+            // Keyboard controls for timer (Spacebar)
+            window.addEventListener('keydown', (e) => {
+                if (timerMode !== 'timer') return;
+                if (e.code === 'Space' && e.target.tagName !== 'INPUT' && e.target.tagName !== 'SELECT' && e.target.tagName !== 'BUTTON') {
+                    e.preventDefault();
+                    if (timerStatus === 'IDLE') {
+                        startHoldTimer();
+                    } else if (timerStatus === 'RUNNING') {
+                        stopTimer();
+                    }
+                }
+            });
+
+            window.addEventListener('keyup', (e) => {
+                if (timerMode !== 'timer') return;
+                if (e.code === 'Space' && e.target.tagName !== 'INPUT') {
+                    e.preventDefault();
+                    if (timerStatus === 'HOLDING') {
+                        clearTimeout(holdTimeout);
+                        timerStatus = 'IDLE';
+                        updateTimerDisplayState();
+                    } else if (timerStatus === 'READY') {
+                        beginTimerSolve();
+                    }
+                }
+            });
+
+            // Mobile button timer listener
+            const mobileBtn = document.getElementById('mobileTimerBtn');
+            mobileBtn.addEventListener('click', () => {
+                if (timerStatus === 'IDLE') {
+                    beginTimerSolve();
+                } else if (timerStatus === 'RUNNING') {
+                    stopTimer();
+                }
+            });
+        }
+
+        // WCA 3x3 Scramble Generator
+        function generateNewScramble() {
+            const moves = ["R", "R'", "R2", "L", "L'", "L2", "U", "U'", "U2", "D", "D'", "D2", "F", "F'", "F2", "B", "B'", "B2"];
+            const axes = ['R', 'L', 'U', 'D', 'F', 'B'];
+            let scrambleList = [];
+            let lastAxis = '';
+            let secondLastAxis = '';
+
+            for (let i = 0; i < 20; i++) {
+                let availableMoves = moves.filter(m => {
+                    let axis = m[0];
+                    if (axis === lastAxis) return false;
+                    if (axis === secondLastAxis && axisOpposite(axis, lastAxis)) return false; // Basic anti-redundancy
+                    return true;
+                });
+                // Simplify: Just pick any move whose axis differs from last move axis
+                let move = availableMoves[Math.floor(Math.random() * availableMoves.length)];
+                // Ensure no same axis twice in a row
+                while (move[0] === lastAxis) {
+                    move = moves[Math.floor(Math.random() * moves.length)];
+                }
+                secondLastAxis = lastAxis;
+                lastAxis = move[0];
+                scrambleList.push(move);
+            }
+            gameState.scramble = scrambleList.join(' ');
+            document.getElementById('scrambleText').innerText = gameState.scramble;
+        }
+
+        function initScramble() {
+            generateNewScramble();
+        }
+
+        function axisOpposite(a, b) {
+            const pairs = { 'R':'L', 'L':'R', 'U':'D', 'D':'U', 'F':'B', 'B':'F' };
+            return pairs[a] === b;
+        }
+
+        // Timer Mode Functions
+        function switchMode(mode) {
+            timerMode = mode;
+            if (timerStatus === 'RUNNING') stopTimer();
+            
+            const timerBtn = document.getElementById('tabTimerBtn');
+            const manualBtn = document.getElementById('tabManualBtn');
+            const timerContainer = document.getElementById('timerModeContainer');
+            const manualContainer = document.getElementById('manualModeContainer');
+
+            if (mode === 'timer') {
+                timerBtn.className = "px-4 py-2 rounded-lg text-xs font-semibold transition bg-blue-600 text-white shadow";
+                manualBtn.className = "px-4 py-2 rounded-lg text-xs font-semibold transition text-slate-400 hover:text-white";
+                timerContainer.classList.remove('hidden');
+                manualContainer.classList.add('hidden');
+            } else {
+                manualBtn.className = "px-4 py-2 rounded-lg text-xs font-semibold transition bg-blue-600 text-white shadow";
+                timerBtn.className = "px-4 py-2 rounded-lg text-xs font-semibold transition text-slate-400 hover:text-white";
+                manualContainer.classList.remove('hidden');
+                timerContainer.classList.add('hidden');
+            }
+        }
+
+        function startHoldTimer() {
+            timerStatus = 'HOLDING';
+            const display = document.getElementById('timerDisplay');
+            display.className = "timer-font text-5xl md:text-7xl font-bold tracking-wider text-amber-400 my-4 select-none";
+            display.innerText = "0.00";
+            
+            holdTimeout = setTimeout(() => {
+                timerStatus = 'READY';
+                display.className = "timer-font text-5xl md:text-7xl font-bold tracking-wider text-emerald-400 my-4 select-none";
+            }, 300); // 300ms hold to ready
+        }
+
+        function updateTimerDisplayState() {
+            const display = document.getElementById('timerDisplay');
+            display.className = "timer-font text-5xl md:text-7xl font-bold tracking-wider text-slate-100 my-4 select-none";
+            display.innerText = "0.00";
+        }
+
+        function beginTimerSolve() {
+            timerStatus = 'RUNNING';
+            timerStartTime = performance.now();
+            const display = document.getElementById('timerDisplay');
+            display.className = "timer-font text-5xl md:text-7xl font-bold tracking-wider text-blue-400 my-4 select-none";
+            
+            document.getElementById('mobileTimerBtn').innerHTML = '<i class="fa-solid fa-stop"></i> Stop Timer';
+            document.getElementById('mobileTimerBtn').className = "w-full sm:w-64 bg-rose-600 hover:bg-rose-500 text-white font-bold py-3.5 rounded-xl transition shadow-lg shadow-rose-600/30 text-sm flex items-center justify-center gap-2";
+
+            timerInterval = setInterval(() => {
+                let elapsed = (performance.now() - timerStartTime) / 1000;
+                display.innerText = elapsed.toFixed(2);
+            }, 10);
+        }
+
+        function stopTimer() {
+            if (timerStatus !== 'RUNNING') return;
+            clearInterval(timerInterval);
+            timerStatus = 'IDLE';
+            
+            let finalTime = (performance.now() - timerStartTime) / 1000;
+            document.getElementById('mobileTimerBtn').innerHTML = '<i class="fa-solid fa-play"></i> Tap to Start / Stop Timer';
+            document.getElementById('mobileTimerBtn').className = "w-full sm:w-64 bg-blue-600 hover:bg-blue-500 text-white font-bold py-3.5 rounded-xl transition shadow-lg shadow-blue-600/30 text-sm flex items-center justify-center gap-2";
+            
+            processSolve(finalTime);
+        }
+
+        // Manual Time submission
+        function submitManualTime() {
+            const inputVal = document.getElementById('manualTimeInput').value.trim();
+            if (!inputVal) return;
+
+            let seconds = parseTimeString(inputVal);
+            if (isNaN(seconds) || seconds <= 0) {
+                alertUserBox("Invalid Time", "Please enter a valid solve time like 14.52 or 1:12.34");
+                return;
+            }
+            document.getElementById('manualTimeInput').value = '';
+            processSolve(seconds);
+        }
+
+        function parseTimeString(str) {
+            if (str.includes(':')) {
+                let parts = str.split(':');
+                let mins = parseFloat(parts[0]);
+                let secs = parseFloat(parts[1]);
+                return (mins * 60) + secs;
+            }
+            return parseFloat(str);
+        }
+
+        // Bot Solve Time Generator (Gaussian distributed around profile mean)
+        function generateBotTime(profileKey) {
+            let profile = botProfiles[profileKey];
+            // Box-Muller transform for normal distribution
+            let u = 0, v = 0;
+            while(u === 0) u = Math.random();
+            while(v === 0) v = Math.random();
+            let num = Math.sqrt(-2.0 * Math.log(u)) * Math.cos(2.0 * Math.PI * v);
+            let botTime = profile.mean + (num * profile.stdDev);
+            // Ensure no negative or unrealistically fast bot solve
+            if (botTime < 5.0) botTime = 5.0;
+            return parseFloat(botTime.toFixed(2));
+        }
+
+        // Process Match Duel Solve
+        function processSolve(playerTime) {
+            let botTime = generateBotTime(gameState.botDifficulty);
+            
+            // Determine winner of round: Lower time wins
+            let playerWonRound = playerTime < botTime;
+
+            if (playerWonRound) {
+                gameState.playerPoints++;
+            } else {
+                gameState.botPoints++;
+            }
+
+            // Add to history
+            gameState.roundHistory.unshift({
+                round: gameState.currentRound,
+                playerTime: playerTime.toFixed(2),
+                botTime: botTime.toFixed(2),
+                winner: playerWonRound ? 'You' : 'Bot'
+            });
+
+            updateUI();
+            showRoundModal(playerWonRound, playerTime, botTime);
+        }
+
+        // UI Updates & Modal controls
+        function updateUI() {
+            document.getElementById('playerSets').innerText = gameState.playerSets;
+            document.getElementById('botSets').innerText = gameState.botSets;
+            document.getElementById('playerPoints').innerText = gameState.playerPoints;
+            document.getElementById('botPoints').innerText = gameState.botPoints;
+
+            // Update History Table
+            const tbody = document.getElementById('historyTableBody');
+            if (gameState.roundHistory.length === 0) {
+                tbody.innerHTML = `<tr id="emptyHistoryRow"><td colspan="4" class="p-4 text-center text-slate-500 italic">No solves recorded in this set yet. Complete a solve to begin!</td></tr>`;
+            } else {
+                let html = '';
+                gameState.roundHistory.forEach(item => {
+                    let badgeColor = item.winner === 'You' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' : 'bg-rose-500/10 text-rose-400 border-rose-500/20';
+                    html += `
+                        <tr class="hover:bg-slate-800/40 transition">
+                            <td class="p-3 font-medium">Round ${item.round}</td>
+                            <td class="p-3 timer-font font-bold text-blue-400">${item.playerTime}s</td>
+                            <td class="p-3 timer-font font-bold text-rose-400">${item.botTime}s</td>
+                            <td class="p-3 text-right"><span class="px-2.5 py-1 rounded-full text-xs font-semibold border ${badgeColor}">${item.winner}</span></td>
+                        </tr>
+                    `;
+                });
+                tbody.innerHTML = html;
+            }
+        }
+
+        function showRoundModal(playerWon, pTime, bTime) {
+            const overlay = document.getElementById('modalOverlay');
+            const card = document.getElementById('modalCard');
+            const iconContainer = document.getElementById('modalIconContainer');
+            const icon = document.getElementById('modalIcon');
+            const title = document.getElementById('modalTitle');
+            const message = document.getElementById('modalMessage');
+
+            document.getElementById('modalPlayerTime').innerText = pTime.toFixed(2) + 's';
+            document.getElementById('modalBotTime').innerText = bTime.toFixed(2) + 's';
+
+            if (playerWon) {
+                iconContainer.className = "w-16 h-16 rounded-full mx-auto flex items-center justify-center text-2xl mb-4 shadow-lg bg-blue-500/20 text-blue-400 border border-blue-500/30";
+                icon.className = "fa-solid fa-trophy";
+                title.innerText = "Round Won!";
+                message.innerText = "Awesome solve! Your time was faster than the bot.";
+            } else {
+                iconContainer.className = "w-16 h-16 rounded-full mx-auto flex items-center justify-center text-2xl mb-4 shadow-lg bg-rose-500/20 text-rose-400 border border-rose-500/30";
+                icon.className = "fa-solid fa-bolt";
+                title.innerText = "Round Lost!";
+                message.innerText = "The bot put up a faster solve time this round.";
+            }
+
+            overlay.classList.remove('hidden');
+            setTimeout(() => {
+                card.classList.remove('scale-95');
+                card.classList.add('scale-100');
+            }, 10);
+        }
+
+        function closeModalAndNext() {
+            const overlay = document.getElementById('modalOverlay');
+            const card = document.getElementById('modalCard');
+            card.classList.remove('scale-100');
+            card.classList.add('scale-95');
+            setTimeout(() => {
+                overlay.classList.add('hidden');
+                checkSetOrMatchCompletion();
+            }, 200);
+        }
+
+        // Check if someone won 3 points (Set won) or 5 sets (Match won)
+        function checkSetOrMatchCompletion() {
+            if (gameState.playerPoints >= 3 || gameState.botPoints >= 3) {
+                let playerWonSet = gameState.playerPoints >= 3;
+                if (playerWonSet) {
+                    gameState.playerSets++;
+                } else {
+                    gameState.botSets++;
+                }
+
+                // Check Match Win (First to 5 sets)
+                if (gameState.playerSets >= 5 || gameState.botSets >= 5) {
+                    let playerWonMatch = gameState.playerSets >= 5;
+                    triggerConfetti();
+                    showCelebrationModal(
+                        playerWonMatch ? "MATCH CHAMPION!" : "MATCH DEFEAT",
+                        playerWonMatch ? "You won 5 sets against the bot! Amazing speedcubing consistency!" : "The bot won 5 sets. Keep practicing and try again!"
+                    );
+                    resetMatchCompletely();
+                    return;
+                } else {
+                    // Set won celebration
+                    if (playerWonSet) triggerConfetti();
+                    showCelebrationModal(
+                        playerWonSet ? "SET WON!" : "SET LOST",
+                        playerWonSet ? "You reached 3 round points first and won this set!" : "The bot reached 3 round points first and won this set."
+                    );
+                    resetSetData();
+                }
+            } else {
+                gameState.currentRound++;
+                generateNewScramble();
+                if (timerMode === 'timer') {
+                    document.getElementById('timerDisplay').innerText = "0.00";
+                }
+            }
+        }
+
+        function resetSetData() {
+            gameState.playerPoints = 0;
+            gameState.botPoints = 0;
+            gameState.currentRound = 1;
+            gameState.roundHistory = [];
+            generateNewScramble();
+            updateUI();
+        }
+
+        function resetMatchCompletely() {
+            gameState.playerSets = 0;
+            gameState.botSets = 0;
+            resetSetData();
+        }
+
+        function showCelebrationModal(title, msg) {
+            document.getElementById('celebrationTitle').innerText = title;
+            document.getElementById('celebrationMessage').innerText = msg;
+            document.getElementById('celebrationModal').classList.remove('hidden');
+        }
+
+        function dismissCelebration() {
+            document.getElementById('celebrationModal').classList.add('hidden');
+        }
+
+        function resetMatchConfirm() {
+            if (confirm("Are you sure you want to reset the current match score?")) {
+                resetMatchCompletely();
+            }
+        }
+
+        function alertUserBox(title, message) {
+            showCelebrationModal(title, message);
+        }
+
+        // Confetti effect helper
+        function triggerConfetti() {
+            confetti({
+                particleCount: 120,
+                spread: 80,
+                origin: { y: 0.6 }
+            });
+        }
+    </script>
+</body>
+</html>
